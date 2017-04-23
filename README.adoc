@@ -1,0 +1,13 @@
+= stub-fn
+
+A macro to stub arbitrary Clojure functions.
+
+== Usage
+
+FIXME
+
+== License
+
+Copyright © 2017 Ferdinand Hofherr
+
+Distributed under the MIT License.
