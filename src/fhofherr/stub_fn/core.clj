@@ -58,9 +58,22 @@
 
 (defn- register-stub-invocation
   [stub-info args return-value]
-  (let [invocation {::invocation-args args
-                    ::return-value return-value}]
+  (let [invocation {:args args
+                    :return-value return-value}]
     (dosync (alter stub-info conj invocation))))
+
+
+(defn- compile-invocation-report
+  [stubbed-fn]
+  {:pre [(stub? stubbed-fn)]}
+  (let [stub-info (get-stub-info stubbed-fn)
+        total-invocations (count stub-info)
+        n-invocations-by-args (->> stub-info
+                                   (group-by :args)
+                                   (map (fn [[k v]] [k (count v)]))
+                                   (into {}))]
+    {:total-invocations total-invocations
+     :n-invocations-by-args n-invocations-by-args}))
 
 
 (defmacro stub-fn
@@ -105,22 +118,22 @@
 
 (defn- filter-by-args
   [stub-infos expected-args]
-  (filter #(-> % ::invocation-args (= expected-args)) stub-infos))
+  (filter #(-> % :args (= expected-args)) stub-infos))
 
 
-(defn invoked?
+(defn verify-invocations
   "Check if the function `stubbed-fn` has been invoked.
 
-  If the `times` keyword argument is given `invoked?` will test if `stubbed-fn`
-  has been invoked the expected number of times.
+  If the `times` keyword argument is given `verify-invocations` will test if 
+  `stubbed-fn` has been invoked the expected number of times.
 
-  If the `args` keyword argument is given `invoked?` will test if `stubbed-fn`
-  has been invoked with the expected arguments.
+  If the `args` keyword argument is given `verify-invocations` will test if
+  `stubbed-fn` has been invoked with the expected arguments.
 
-  If both `args` and `times` are given `invoked?` checks if the function has
-  been invoked the expected number of times with the expected arguments.
-  This means that the function may have been additionally invoked with
-  different arguments an arbitrary number of times.
+  If both `args` and `times` are given `verify-invocations` checks if the
+  function has been invoked the expected number of times with the expected
+  arguments. This means that the function may have been additionally invoked
+  with different arguments an arbitrary number of times.
 
   Arguments:
 
@@ -132,7 +145,29 @@
   * `args`: map of expected arguments to the function invocation."
   [stubbed-fn & {:keys [times args] :or {times 1}}]
   {:pre [(stub? stubbed-fn)]}
-  (let [invocations (as-> stubbed-fn $
-                      (get-stub-info $)
-                      (if args (filter-by-args $ args) $))]
-    (-> invocations count (= times))))
+  (let [invocation-report (compile-invocation-report stubbed-fn)
+        expected {:times times :args args}
+        actual {:times (if args
+                         (get-in invocation-report
+                                 [:n-invocations-by-args args])
+                         (:total-invocations invocation-report))
+                :args args}
+        type (if (= expected actual) ::success ::failure)
+        verification-report {::type type
+                             ::expected expected
+                             ::actual actual
+                             ::invocation-report invocation-report}]
+    verification-report))
+
+
+
+(defn success?
+  [verification-report]
+  (-> verification-report ::type (= ::success)))
+
+
+(defn invoked?
+  [stubbed-fn & {:keys [times args] :or {times 1} :as kwargs}]
+  (as-> stubbed-fn $
+    (apply verify-invocations $ (flatten (seq kwargs)))
+    (success? $)))
