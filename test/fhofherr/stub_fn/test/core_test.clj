@@ -36,6 +36,10 @@
                           (- a b c))]
       (is (= (- 1 2 3) (f 1 2 3))))))
 
+(deftest identify-stubs
+  (is (true? (core/stub? (core/stub-fn f []))))
+  (is (false? (core/stub? (fn [])))))
+
 
 (deftest checking-function-invocation
 

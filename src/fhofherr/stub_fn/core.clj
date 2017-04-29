@@ -30,8 +30,30 @@
 
 
 (defn get-stub-info
+  "Get all available information about the `stubbed-fn`.
+
+  Returns `nil` if the `stubbed-function` is not a stub.
+
+  Arguments:
+
+  * `stubbed-fn`: the stubbed function"
   [stubbed-fn]
-  @(-> stubbed-fn meta ::stub-info))
+  (when-let [stub-info (-> stubbed-fn meta ::stub-info)]
+    @stub-info))
+
+(defn stub?
+  "Check if the function `f` is a stub.
+
+  Return `true` if `f` is a stub, or `false` otherwise.
+
+  Arguments:
+
+  * `f`: a function that may be a stub"
+  [f]
+  {:pre [(fn? f)]}
+  (as-> f $
+       (get-stub-info $)
+       ((complement nil?) $)))
 
 
 (defn- register-stub-invocation
@@ -42,6 +64,30 @@
 
 
 (defmacro stub-fn
+  "Define an anonymous function that can be used as a stub for another function.
+
+  Can be used almost like `fn`. The only difference is, that a function name
+  is required. This makes it easier to produce meaningful stack traces and
+  failure reports.
+
+  Internally `stub-fn` uses `fn` to create an anonymous function. Various
+  information about the function's invocations is stored in a `ref` in the
+  function's meta data.
+
+  **Warning**: storing information about function invocations in a `ref` makes
+  any stubbed function *stateful*. Avoid to store it in the global context.
+  You should *never* need to do something like the following:
+
+  ```clojure
+  (def (stub-fn stubbed [] ...))
+  ```
+
+  Arguments:
+
+  * `fn-name`: symbol identifying the function stub
+  * `fn-args`: argument vector of the stubbed function
+  * `fn-body`: body of the function stub (optional).
+  "
   [fn-name fn-args & fn-body]
   (let [args (or fn-args [])
         arg-syms (#'find-fn-arg-syms args)
@@ -57,14 +103,35 @@
        (#'assoc-stub-info stubbed-fn# stub-info#))))
 
 
-
 (defn- filter-by-args
   [stub-infos expected-args]
   (filter #(-> % ::invocation-args (= expected-args)) stub-infos))
 
 
 (defn invoked?
+  "Check if the function `stubbed-fn` has been invoked.
+
+  If the `times` keyword argument is given `invoked?` will test if `stubbed-fn`
+  has been invoked the expected number of times.
+
+  If the `args` keyword argument is given `invoked?` will test if `stubbed-fn`
+  has been invoked with the expected arguments.
+
+  If both `args` and `times` are given `invoked?` checks if the function has
+  been invoked the expected number of times with the expected arguments.
+  This means that the function may have been additionally invoked with
+  different arguments an arbitrary number of times.
+
+  Arguments:
+
+  * `stubbed-fn`: the stubbed function.
+
+  Keyword arguments:
+
+  * `times`: expected number of invocations. Defaults to 1.
+  * `args`: map of expected arguments to the function invocation."
   [stubbed-fn & {:keys [times args] :or {times 1}}]
+  {:pre [(stub? stubbed-fn)]}
   (let [invocations (as-> stubbed-fn $
                       (get-stub-info $)
                       (if args (filter-by-args $ args) $))]
