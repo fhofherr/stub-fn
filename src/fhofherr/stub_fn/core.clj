@@ -42,12 +42,12 @@
 
 
 (defmacro stub-fn
-  [fn-args & fn-body]
+  [fn-name fn-args & fn-body]
   (let [args (or fn-args [])
         arg-syms (#'find-fn-arg-syms args)
         args-collector `(into {} [~@(for [s arg-syms] `['~s ~s])])]
     `(let [stub-info# (#'make-stub-info)
-           stubbed-fn# (fn [~@args]
+           stubbed-fn# (fn fn-name [~@args]
                          (let [invocation-args# ~args-collector
                                return-value# (do ~@fn-body)]
                            (#'register-stub-invocation stub-info#
