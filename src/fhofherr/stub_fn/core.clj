@@ -1,9 +1,9 @@
 (ns fhofherr.stub-fn.core)
 
 
-(defn- find-fn-param-syms
+(defn- find-fn-arg-syms
   "Find all symbols to which function parameter values are bound."
-  [fn-params]
+  [fn-args]
   (letfn [(search-syms [[x & xs] found-syms]
             (cond
               (= x '&) (recur xs found-syms)
@@ -16,28 +16,46 @@
               (sequential? x) (let [ys (apply conj x xs)]
                                 (recur ys found-syms))
               :else found-syms))]
-    (search-syms (seq fn-params) [])))
+    (search-syms (seq fn-args) [])))
+
+
+(defn- make-stub-info
+  []
+  (ref []))
+
+
+(defn- assoc-stub-info
+  [stubbed-fn stub-info]
+  (vary-meta stubbed-fn assoc ::stub-info stub-info))
+
+
+(defn get-stub-info
+  [stubbed-fn]
+  @(-> stubbed-fn meta ::stub-info))
+
+
+(defn- register-stub-invocation
+  [stub-info args return-value]
+  (let [invocation {::invocation-args args
+                    ::return-value return-value}]
+    (dosync (alter stub-info conj invocation))))
 
 
 (defmacro stub-fn
-  [fn-params & fn-body]
-  (let [param-syms (#'find-fn-param-syms fn-params)]
-    `(let [stub-invocations# (ref [])
-           stubbed-fn# (fn [~@fn-params]
-                         (let [invocation-args# (into {}
-                                                      [~@(for [s param-syms]
-                                                           `['~s ~s])])
-                               return-value# (do ~@fn-body)
-                               invocation# {::invocation-args invocation-args#
-                                            ::return-value return-value#}]
-                           (dosync
-                             (alter stub-invocations# conj invocation#))
+  [fn-args & fn-body]
+  (let [args (or fn-args [])
+        arg-syms (#'find-fn-arg-syms args)
+        args-collector `(into {} [~@(for [s arg-syms] `['~s ~s])])]
+    `(let [stub-info# (#'make-stub-info)
+           stubbed-fn# (fn [~@args]
+                         (let [invocation-args# ~args-collector
+                               return-value# (do ~@fn-body)]
+                           (#'register-stub-invocation stub-info#
+                                                       invocation-args#
+                                                       return-value#)
                            return-value#))]
-       (vary-meta stubbed-fn# assoc ::stub-fn stub-invocations#))))
+       (#'assoc-stub-info stubbed-fn# stub-info#))))
 
-(defn stub-info
-  [stubbed-fn]
-  @(-> stubbed-fn meta ::stub-fn))
 
 
 (defn- filter-by-args
@@ -48,6 +66,6 @@
 (defn invoked?
   [stubbed-fn & {:keys [times args] :or {times 1}}]
   (let [invocations (as-> stubbed-fn $
-                      (stub-info $)
+                      (get-stub-info $)
                       (if args (filter-by-args $ args) $))]
     (-> invocations count (= times))))
