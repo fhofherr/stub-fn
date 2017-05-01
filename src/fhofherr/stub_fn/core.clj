@@ -233,6 +233,13 @@
 
 
 (defn format-verification-report
+  "Format the verification report returned by [[verify-invocations]].
+
+  Arguments:
+
+  * `verification-report`: the verification report to format.
+  * `add-type`: whether to add the type of the report, which is either
+    'Success!' or 'Failure!'. Default `false`."
   [verification-report & {:keys [add-type] :or {add-type false}}]
   (let [n-total (get-in verification-report
                         [::invocation-report :total-invocations])
