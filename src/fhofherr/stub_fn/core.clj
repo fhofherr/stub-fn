@@ -1,4 +1,5 @@
-(ns fhofherr.stub-fn.core)
+(ns fhofherr.stub-fn.core
+  (:require [clojure.pprint :refer [pprint]]))
 
 
 (defn- find-fn-arg-syms
@@ -20,8 +21,9 @@
 
 
 (defn- make-stub-info
-  []
-  (ref []))
+  [fn-name]
+  {::fn-name fn-name
+   ::invocations (ref [])})
 
 
 (defn- assoc-stub-info
@@ -38,8 +40,36 @@
 
   * `stubbed-fn`: the stubbed function"
   [stubbed-fn]
-  (when-let [stub-info (-> stubbed-fn meta ::stub-info)]
-    @stub-info))
+  (-> stubbed-fn meta ::stub-info))
+
+
+(defn get-stub-fn-name
+  "Get `stubbed-fn`'s name.
+
+  Returns `nil` if the `stubbed-function` is not a stub.
+
+  Arguments:
+
+  * `stubbed-fn`: the stubbed function"
+  [stubbed-fn]
+  (some-> stubbed-fn
+          get-stub-info
+          ::fn-name
+          name))
+
+(defn get-stub-invocations
+  "Get all available information about `stubbed-fn`'s invocations.
+
+  Returns `nil` if the `stubbed-function` is not a stub.
+
+  Arguments:
+
+  * `stubbed-fn`: the stubbed function"
+  [stubbed-fn]
+  (some-> stubbed-fn
+          get-stub-info
+          ::invocations
+          deref))
 
 (defn stub?
   "Check if the function `f` is a stub.
@@ -60,13 +90,16 @@
   [stub-info args return-value]
   (let [invocation {:args args
                     :return-value return-value}]
-    (dosync (alter stub-info conj invocation))))
+    (dosync
+      (update-in stub-info
+                 [::invocations]
+                 #(alter % conj invocation)))))
 
 
 (defn- compile-invocation-report
   [stubbed-fn]
   {:pre [(stub? stubbed-fn)]}
-  (let [stub-info (get-stub-info stubbed-fn)
+  (let [stub-info (get-stub-invocations stubbed-fn)
         total-invocations (count stub-info)
         n-invocations-by-args (->> stub-info
                                    (group-by :args)
@@ -105,7 +138,7 @@
   (let [args (or fn-args [])
         arg-syms (#'find-fn-arg-syms args)
         args-collector `(into {} [~@(for [s arg-syms] `['~s ~s])])]
-    `(let [stub-info# (#'make-stub-info)
+    `(let [stub-info# (#'make-stub-info '~fn-name)
            stubbed-fn# (fn fn-name [~@args]
                          (let [invocation-args# ~args-collector
                                return-value# (do ~@fn-body)]
@@ -149,16 +182,59 @@
         expected {:times times :args args}
         actual {:times (if args
                          (get-in invocation-report
-                                 [:n-invocations-by-args args])
-                         (:total-invocations invocation-report))
+                                 [:n-invocations-by-args args]
+                                 0)
+                         (:total-invocations invocation-report 0))
                 :args args}
         type (if (= expected actual) ::success ::failure)
         verification-report {::type type
+                             ::fn-name (get-stub-fn-name stubbed-fn)
                              ::expected expected
                              ::actual actual
                              ::invocation-report invocation-report}]
     verification-report))
 
+
+(defn- pprint-str
+  [x]
+  (with-out-str (pprint x)))
+
+
+(defn- format-fn-args
+  [fn-args]
+  (if fn-args
+    (->> fn-args pprint-str (format  " with arguments:\n%s"))
+    ""))
+
+
+(defn- format-report-type
+  [report-type]
+  (if (= report-type ::success)
+    "Success!"
+    "Failure!"))
+
+
+(defn format-verification-report
+  [verification-report & {:keys [add-type] :or {add-type false}}]
+  (let [n-expected (get-in verification-report [::expected :times])
+        args-expected (get-in verification-report [::expected :args])
+        n-actual (get-in verification-report [::actual :times])
+        args-actual (get-in verification-report [::actual :args])
+        type-str (if add-type
+                   (-> verification-report ::type format-report-type (str "\n"))
+                   "")
+        fn-name-str (-> verification-report ::fn-name name)
+        expected-str (format "Expected %s to be called %d times%s."
+                             fn-name-str
+                             n-expected
+                             (format-fn-args args-expected))
+        actual-str (format "It has been called %d times%s."
+                           n-actual
+                           (format-fn-args args-actual))]
+    (str type-str
+         expected-str
+         "\n"
+         actual-str)))
 
 
 (defn success?
