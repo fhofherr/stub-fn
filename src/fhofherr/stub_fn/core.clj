@@ -199,12 +199,30 @@
   [x]
   (with-out-str (pprint x)))
 
+(defn- indent-lines
+  [n s]
+  (let [indent-str (->> " "
+                       (repeat n)
+                       (apply str))]
+    (clojure.string/replace s
+                          #"[^\r\n]+(\r|\n|\r\n)"
+                          (str indent-str "$0"))))
+
+(defn- format-invocation-report
+  [stub-invocations]
+  (->> stub-invocations
+       :n-invocations-by-args
+       (map (fn [[args times]] {:args args :times times}))
+      (map pprint-str)
+      (apply str)
+      (indent-lines 4)))
+
 
 (defn- format-fn-args
   [fn-args]
   (if fn-args
-    (->> fn-args pprint-str (format  " with arguments:\n%s"))
-    ""))
+    (->> fn-args pprint-str (indent-lines 4) (format  " with arguments:\n\n%s"))
+    "."))
 
 
 (defn- format-report-type
@@ -216,7 +234,9 @@
 
 (defn format-verification-report
   [verification-report & {:keys [add-type] :or {add-type false}}]
-  (let [n-expected (get-in verification-report [::expected :times])
+  (let [n-total (get-in verification-report
+                        [::invocation-report :total-invocations])
+        n-expected (get-in verification-report [::expected :times])
         args-expected (get-in verification-report [::expected :args])
         n-actual (get-in verification-report [::actual :times])
         args-actual (get-in verification-report [::actual :args])
@@ -224,17 +244,25 @@
                    (-> verification-report ::type format-report-type (str "\n"))
                    "")
         fn-name-str (-> verification-report ::fn-name name)
-        expected-str (format "Expected %s to be called %d times%s."
+        expected-str (format "Expected function '%s' to be called %d times%s"
                              fn-name-str
                              n-expected
                              (format-fn-args args-expected))
-        actual-str (format "It has been called %d times%s."
+        actual-str (format "It has been called %d times%s"
                            n-actual
-                           (format-fn-args args-actual))]
+                           (format-fn-args args-actual))
+        invocations-str (if (> n-total 0)
+                          (format "\nIn total there were %d invocations of this stub:\n\n%s"
+                                  n-total
+                                  (-> verification-report
+                                      ::invocation-report
+                                      format-invocation-report))
+                          "\nThere were no interactions with this stub!")]
     (str type-str
          expected-str
          "\n"
-         actual-str)))
+         actual-str
+         invocations-str)))
 
 
 (defn success?
