@@ -1,4 +1,8 @@
 (ns fhofherr.stub-fn.core
+  "Implements the core functionality of `fhofherr/stub-fn`.
+
+  Users of `clojure.test` should not use this namespace directly. Instead
+  they should use [[fhofherr.stub-fn.clojure.test]]."
   (:require [clojure.pprint :refer [pprint]]))
 
 
@@ -233,6 +237,13 @@
 
 
 (defn format-verification-report
+  "Format the verification report returned by [[verify-invocations]].
+
+  Arguments:
+
+  * `verification-report`: the verification report to format.
+  * `add-type`: whether to add the type of the report, which is either
+    'Success!' or 'Failure!'. Default `false`."
   [verification-report & {:keys [add-type] :or {add-type false}}]
   (let [n-total (get-in verification-report
                         [::invocation-report :total-invocations])
