@@ -7,3 +7,5 @@ All notable changes to this project will be documented in this file. This change
 === Added
 
 * `stub-fn` macro that can be used almost like `fn` and defines an anonymous function that keeps track of its invocations. In contrast to `fn` `stub-fn` requires a function name to be passed. This makes creation of meaningful error messages and failure reports easier.
+* `verify-invocations` function that verifys a stub's invcations against expectations.
+* `format-verification-report` function that creates a pretty pretty prints a verification report.
