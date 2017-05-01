@@ -1,4 +1,27 @@
 (ns fhofherr.stub-fn.clojure.test
+  "Integration of `fhofherr/stub-fn` into `clojure.test`.
+
+  Re-exports the [[core/stub-fn]] macro.
+
+  It extends `clojure.test/assert-expr` to provide the `invoked?` assertion.
+  The `invoked?` assertions accepts the same arguments as
+  [[core/verify-invocations]].
+
+  In order to use `fhofherr/stub-fn` together with `clojure.test` something
+  like the following is enough:
+
+  ```clojure
+  (ns my-test-ns
+    (:require [clojure.test :refer :all]
+              [fhofherr.stub-fn.clojure.test :refer [stub-fn]]))
+
+  (deftest some-test
+    (let [stubbed-fn (stub-fn stubbed-fn [])]
+      (stubbed-fn)
+      (is (invoked? stubbed-fn :times 1))))
+  ```
+  
+  "
   (:require [clojure.test :as t]
             [fhofherr.stub-fn.core :as core]))
 

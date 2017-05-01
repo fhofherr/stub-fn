@@ -1,4 +1,8 @@
 (ns fhofherr.stub-fn.core
+  "Implements the core functionality of `fhofherr/stub-fn`.
+
+  Users of `clojure.test` should not use this namespace directly. Instead
+  they should use [[fhofherr.stub-fn.clojure.test]]."
   (:require [clojure.pprint :refer [pprint]]))
 
 
