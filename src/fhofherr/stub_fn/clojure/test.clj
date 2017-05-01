@@ -41,7 +41,6 @@
                                        "Convenience re-export of [[core/stub-fn]].")))
         @#'core/stub-fn)
 
-
 (defmethod t/assert-expr 'invoked? [msg form]
   `(let [verification-report# (core/verify-invocations ~@(rest form))
          verification-result# (if (core/success? verification-report#)

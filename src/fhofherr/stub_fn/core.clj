@@ -5,7 +5,6 @@
   they should use [[fhofherr.stub-fn.clojure.test]]."
   (:require [clojure.pprint :refer [pprint]]))
 
-
 (defn- find-fn-arg-syms
   "Find all symbols to which function parameter values are bound."
   [fn-args]
@@ -15,25 +14,22 @@
               (keyword? x) (recur xs found-syms)
               (symbol? x) (recur xs (conj found-syms x))
               (map? x) (let [ys (as-> x $
-                                    (get $ :keys (keys $))
-                                    (apply conj $ xs))]
+                                      (get $ :keys (keys $))
+                                      (apply conj $ xs))]
                          (recur ys found-syms))
               (sequential? x) (let [ys (apply conj x xs)]
                                 (recur ys found-syms))
               :else found-syms))]
     (search-syms (seq fn-args) [])))
 
-
 (defn- make-stub-info
   [fn-name]
   {::fn-name fn-name
    ::invocations (ref [])})
 
-
 (defn- assoc-stub-info
   [stubbed-fn stub-info]
   (vary-meta stubbed-fn assoc ::stub-info stub-info))
-
 
 (defn get-stub-info
   "Get all available information about the `stubbed-fn`.
@@ -45,7 +41,6 @@
   * `stubbed-fn`: the stubbed function"
   [stubbed-fn]
   (-> stubbed-fn meta ::stub-info))
-
 
 (defn get-stub-fn-name
   "Get `stubbed-fn`'s name.
@@ -86,19 +81,17 @@
   [f]
   {:pre [(fn? f)]}
   (as-> f $
-       (get-stub-info $)
-       ((complement nil?) $)))
-
+        (get-stub-info $)
+        ((complement nil?) $)))
 
 (defn- register-stub-invocation
   [stub-info args return-value]
   (let [invocation {:args args
                     :return-value return-value}]
     (dosync
-      (update-in stub-info
-                 [::invocations]
-                 #(alter % conj invocation)))))
-
+     (update-in stub-info
+                [::invocations]
+                #(alter % conj invocation)))))
 
 (defn- compile-invocation-report
   [stubbed-fn]
@@ -111,7 +104,6 @@
                                    (into {}))]
     {:total-invocations total-invocations
      :n-invocations-by-args n-invocations-by-args}))
-
 
 (defmacro stub-fn
   "Define an anonymous function that can be used as a stub for another function.
@@ -152,11 +144,9 @@
                            return-value#))]
        (#'assoc-stub-info stubbed-fn# stub-info#))))
 
-
 (defn- filter-by-args
   [stub-infos expected-args]
   (filter #(-> % :args (= expected-args)) stub-infos))
-
 
 (defn verify-invocations
   "Check if the function `stubbed-fn` has been invoked.
@@ -198,7 +188,6 @@
                              ::invocation-report invocation-report}]
     verification-report))
 
-
 (defn- pprint-str
   [x]
   (with-out-str (pprint x)))
@@ -206,21 +195,20 @@
 (defn- indent-lines
   [n s]
   (let [indent-str (->> " "
-                       (repeat n)
-                       (apply str))]
+                        (repeat n)
+                        (apply str))]
     (clojure.string/replace s
-                          #"[^\r\n]+(\r|\n|\r\n)"
-                          (str indent-str "$0"))))
+                            #"[^\r\n]+(\r|\n|\r\n)"
+                            (str indent-str "$0"))))
 
 (defn- format-invocation-report
   [stub-invocations]
   (->> stub-invocations
        :n-invocations-by-args
        (map (fn [[args times]] {:args args :times times}))
-      (map pprint-str)
-      (apply str)
-      (indent-lines 4)))
-
+       (map pprint-str)
+       (apply str)
+       (indent-lines 4)))
 
 (defn- format-fn-args
   [fn-args]
@@ -228,13 +216,11 @@
     (->> fn-args pprint-str (indent-lines 4) (format  " with arguments:\n\n%s"))
     "."))
 
-
 (defn- format-report-type
   [report-type]
   (if (= report-type ::success)
     "Success!"
     "Failure!"))
-
 
 (defn format-verification-report
   "Format the verification report returned by [[verify-invocations]].
@@ -275,14 +261,12 @@
          actual-str
          invocations-str)))
 
-
 (defn success?
   [verification-report]
   (-> verification-report ::type (= ::success)))
 
-
 (defn invoked?
   [stubbed-fn & {:keys [times args] :or {times 1} :as kwargs}]
   (as-> stubbed-fn $
-    (apply verify-invocations $ (flatten (seq kwargs)))
-    (success? $)))
+        (apply verify-invocations $ (flatten (seq kwargs)))
+        (success? $)))

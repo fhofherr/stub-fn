@@ -2,7 +2,6 @@
   (:require [clojure.test :refer :all]
             [fhofherr.stub-fn.core :as core]))
 
-
 (deftest find-fn-arg-syms
 
   (testing "positional parameters"
@@ -18,7 +17,6 @@
     (is (= '[a b] (#'core/find-fn-arg-syms '[{a :a b :b}])))
     (is (= '[a b] (#'core/find-fn-arg-syms '[{:keys [a b]}])))
     (is (= '[a b] (#'core/find-fn-arg-syms '[{:keys [a b] :or {a c b d}}])))))
-
 
 (deftest stubbing-functions
 
@@ -39,7 +37,6 @@
 (deftest identify-stubs
   (is (true? (core/stub? (core/stub-fn f []))))
   (is (false? (core/stub? (fn [])))))
-
 
 (deftest checking-function-invocation
 

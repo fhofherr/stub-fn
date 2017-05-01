@@ -6,7 +6,6 @@
             [clojure.test :as t]
             [clojure.tools.namespace.repl :refer (refresh refresh-all)]))
 
-
 (defn- do-test
   []
   (t/run-all-tests #"fhofherr\.stub-fn\.test\..+-test"))

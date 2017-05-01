@@ -2,7 +2,6 @@
   (:require [clojure.test :refer :all]
             [fhofherr.stub-fn.clojure.test :refer [stub-fn]]))
 
-
 (deftest verify-invocations-using-test-is
   (let [f (stub-fn f [])]
     (f)
