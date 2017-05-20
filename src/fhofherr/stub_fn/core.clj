@@ -2,7 +2,12 @@
   "Implements the core functionality of `fhofherr/stub-fn`.
 
   Users of `clojure.test` should not use this namespace directly. Instead
-  they should use [[fhofherr.stub-fn.clojure.test]]."
+  they should use [[fhofherr.stub-fn.clojure.test]].
+
+  The core functionality is implemented by the [[stub-fn]] macro. It creates
+  an anonymous function which can be used in place of any other function. The
+  stubbed function tracks information about its invocations under the
+  `::stub-info` key in its meta data."
   (:require [clojure.pprint :refer [pprint]]))
 
 (defn- find-fn-arg-syms
