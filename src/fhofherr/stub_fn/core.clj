@@ -2,7 +2,12 @@
   "Implements the core functionality of `fhofherr/stub-fn`.
 
   Users of `clojure.test` should not use this namespace directly. Instead
-  they should use [[fhofherr.stub-fn.clojure.test]]."
+  they should use [[fhofherr.stub-fn.clojure.test]].
+
+  The core functionality is implemented by the [[stub-fn]] macro. It creates
+  an anonymous function which can be used in place of any other function. The
+  stubbed function tracks information about its invocations under the
+  `::stub-info` key in its meta data."
   (:require [clojure.pprint :refer [pprint]]))
 
 (defn- find-fn-arg-syms
@@ -128,8 +133,7 @@
 
   * `fn-name`: symbol identifying the function stub
   * `fn-args`: argument vector of the stubbed function
-  * `fn-body`: body of the function stub (optional).
-  "
+  * `fn-body`: body of the function stub (optional)."
   [fn-name fn-args & fn-body]
   (let [args (or fn-args [])
         arg-syms (#'find-fn-arg-syms args)
@@ -213,7 +217,10 @@
 (defn- format-fn-args
   [fn-args]
   (if fn-args
-    (->> fn-args pprint-str (indent-lines 4) (format  " with arguments:\n\n%s"))
+    (->> fn-args
+         pprint-str
+         (indent-lines 4)
+         (format  " with arguments:\n\n%s"))
     "."))
 
 (defn- format-report-type
@@ -266,6 +273,11 @@
   (-> verification-report ::type (= ::success)))
 
 (defn invoked?
+  "Check if a stubbed function has been invoked successfully.
+
+  Returns `true` if the stubbed function was invoked as expected.
+
+  Takes the same arguments as [[verify-invocations]]."
   [stubbed-fn & {:keys [times args] :or {times 1} :as kwargs}]
   (as-> stubbed-fn $
         (apply verify-invocations $ (flatten (seq kwargs)))

@@ -4,7 +4,34 @@ A macro to stub arbitrary Clojure functions.
 
 == Usage
 
-FIXME
+=== Leiningen dependency
+
+`stub-fn` is available on https://clojars.org[Clojars]. To use it in your project add the following to your `project.clj` dependency vector:
+
+[source, clojure]
+----
+[fhofherr/stub-fn "0.1.0-SNAPSHOT"]
+----
+
+=== Without `clojure.test`
+
+If you do not use https://clojure.github.io/clojure/clojure.test-api.html[`clojure.test`] require the `fhofherr.stub-fn.core` namespace. To stub a function use the `stub-fn` macro. To verify invocations use either `verify-invocations` or `invoked?`.
+
+=== With `clojure.test`
+
+Users of https://clojure.github.io/clojure/clojure.test-api.html[`clojure.test`] should use the `fhofherr.stub-fn.clojure.test` namespace instead. It re-exports the `stub-fn` macro and extends `clojure.test` to enable verification of invocations using the https://clojure.github.io/clojure/clojure.test-api.html#clojure.test/is[test-is] macro. Instead of using `fhofherr.stub-fn.core/verify-invocations` users can do the following:
+
+[source, clojure]
+----
+(ns some-test-ns
+  (:require [clojure.test :refer :all]
+            [fhofherr.stub-fn.clojure.test :refer [stub-fn]]))
+
+(deftest using-test-is
+  (let [f (stub-fn f [x])]
+      (f 1)
+      (is (invoked? f :times 1 :args {'x 1}))))
+----
 
 == License
 
