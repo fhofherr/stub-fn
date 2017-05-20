@@ -273,6 +273,11 @@
   (-> verification-report ::type (= ::success)))
 
 (defn invoked?
+  "Check if a stubbed function has been invoked successfully.
+
+  Returns `true` if the stubbed function was invoked as expected.
+
+  Takes the same arguments as [[verify-invocations]]."
   [stubbed-fn & {:keys [times args] :or {times 1} :as kwargs}]
   (as-> stubbed-fn $
         (apply verify-invocations $ (flatten (seq kwargs)))
