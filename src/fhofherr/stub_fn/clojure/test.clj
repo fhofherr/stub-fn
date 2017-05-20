@@ -19,9 +19,7 @@
     (let [stubbed-fn (stub-fn stubbed-fn [])]
       (stubbed-fn)
       (is (invoked? stubbed-fn :times 1))))
-  ```
-  
-  "
+  ```"
   (:require [clojure.test :as t]
             [fhofherr.stub-fn.core :as core]))
 

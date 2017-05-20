@@ -133,8 +133,7 @@
 
   * `fn-name`: symbol identifying the function stub
   * `fn-args`: argument vector of the stubbed function
-  * `fn-body`: body of the function stub (optional).
-  "
+  * `fn-body`: body of the function stub (optional)."
   [fn-name fn-args & fn-body]
   (let [args (or fn-args [])
         arg-syms (#'find-fn-arg-syms args)
@@ -218,7 +217,10 @@
 (defn- format-fn-args
   [fn-args]
   (if fn-args
-    (->> fn-args pprint-str (indent-lines 4) (format  " with arguments:\n\n%s"))
+    (->> fn-args
+         pprint-str
+         (indent-lines 4)
+         (format  " with arguments:\n\n%s"))
     "."))
 
 (defn- format-report-type
