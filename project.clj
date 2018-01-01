@@ -3,7 +3,7 @@
   :url "https://github.com/fhofherr/stub-fn"
   :license {:name "MIT"
             :url "https://opensource.org/licenses/MIT"}
-  :dependencies [[org.clojure/clojure "1.8.0"]]
+  :dependencies [[org.clojure/clojure "1.9.0"]]
   :plugins [[lein-codox "0.10.3"]]
   :codox {:namespaces [#"^fhofherr\.stub-fn\."]
           :metadata {:doc/format :markdown}}

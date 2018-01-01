@@ -19,8 +19,8 @@
               (keyword? x) (recur xs found-syms)
               (symbol? x) (recur xs (conj found-syms x))
               (map? x) (let [ys (as-> x $
-                                      (get $ :keys (keys $))
-                                      (apply conj $ xs))]
+                                  (get $ :keys (keys $))
+                                  (apply conj $ xs))]
                          (recur ys found-syms))
               (sequential? x) (let [ys (apply conj x xs)]
                                 (recur ys found-syms))
@@ -86,8 +86,8 @@
   [f]
   {:pre [(fn? f)]}
   (as-> f $
-        (get-stub-info $)
-        ((complement nil?) $)))
+    (get-stub-info $)
+    ((complement nil?) $)))
 
 (defn- register-stub-invocation
   [stub-info args return-value]
@@ -139,7 +139,7 @@
         arg-syms (#'find-fn-arg-syms args)
         args-collector `(into {} [~@(for [s arg-syms] `['~s ~s])])]
     `(let [stub-info# (#'make-stub-info '~fn-name)
-           stubbed-fn# (fn fn-name [~@args]
+           stubbed-fn# (fn ~fn-name [~@args]
                          (let [invocation-args# ~args-collector
                                return-value# (do ~@fn-body)]
                            (#'register-stub-invocation stub-info#
@@ -280,5 +280,5 @@
   Takes the same arguments as [[verify-invocations]]."
   [stubbed-fn & {:keys [times args] :or {times 1} :as kwargs}]
   (as-> stubbed-fn $
-        (apply verify-invocations $ (flatten (seq kwargs)))
-        (success? $)))
+    (apply verify-invocations $ (flatten (seq kwargs)))
+    (success? $)))
