@@ -1,4 +1,4 @@
-(defproject fhofherr/stub-fn "0.1.0-SNAPSHOT"
+(defproject fhofherr/stub-fn "0.1.0"
   :description "A macro to stub arbitrary Clojure functions."
   :url "https://github.com/fhofherr/stub-fn"
   :license {:name "MIT"
