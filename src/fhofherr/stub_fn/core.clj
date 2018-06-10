@@ -10,9 +10,7 @@
   `::stub-info` key in its meta data.
 
   Starting with version `v0.2.0` `fhofherr/stub-fn` provides a `stub-protocol`
-  macro which reifys a protocol using stub functions. As with plain stub
-  functions the data is tracked under the `::stub-info` key in the meta data
-  of the reifyed protocol"
+  macro which reifys a protocol using stub functions."
   (:require [clojure.pprint :refer [pprint]]))
 
 (defn- find-fn-arg-syms
