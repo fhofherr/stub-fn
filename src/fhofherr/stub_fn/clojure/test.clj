@@ -23,7 +23,7 @@
   (:require [clojure.test :as t]
             [fhofherr.stub-fn.core :as core]))
 
-;; Re-export the core/stub-fn macro for convenience.
+;; Re-export the core/stub-fn and core/stub-protocol macro for convenience.
 ;;
 ;; This is a little tricky, as stub-fn is a macro. The macro function itself
 ;; is obtained by de-refing the var that points to it. In order to make the
@@ -33,11 +33,18 @@
 ;;
 ;; See http://stackoverflow.com/questions/20831029/how-is-it-possible-to-intern-macros-in-clojure
 (intern 'fhofherr.stub-fn.clojure.test
-        (with-meta 'stub-fn (-> #'core/stub-fn
-                                meta
-                                (assoc :doc
-                                       "Convenience re-export of [[core/stub-fn]].")))
+        (with-meta 'stub-fn
+                   (-> #'core/stub-fn
+                       meta
+                       (assoc :doc "Convenience re-export of [[core/stub-fn]].")))
         @#'core/stub-fn)
+
+(intern 'fhofherr.stub-fn.clojure.test
+        (with-meta 'stub-protocol
+                   (-> #'core/stub-protocol
+                       meta
+                       (assoc :doc "Convenience re-export of [[core/stub-protocol]].")))
+        @#'core/stub-protocol)
 
 (defmethod t/assert-expr 'invoked? [msg form]
   `(let [verification-report# (core/verify-invocations ~@(rest form))

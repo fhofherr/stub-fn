@@ -193,29 +193,8 @@
   [stub-infos expected-args]
   (filter #(-> % :args (= expected-args)) stub-infos))
 
-(defn verify-invocations
-  "Check if the function `stubbed-fn` has been invoked.
-
-  If the `times` keyword argument is given `verify-invocations` will test if
-  `stubbed-fn` has been invoked the expected number of times.
-
-  If the `args` keyword argument is given `verify-invocations` will test if
-  `stubbed-fn` has been invoked with the expected arguments.
-
-  If both `args` and `times` are given `verify-invocations` checks if the
-  function has been invoked the expected number of times with the expected
-  arguments. This means that the function may have been additionally invoked
-  with different arguments an arbitrary number of times.
-
-  Arguments:
-
-  *   `stubbed-fn`: the stubbed function.
-
-  Keyword arguments:
-
-  *   `times`: expected number of invocations. Defaults to 1.
-  *   `args`: map of expected arguments to the function invocation."
-  [stubbed-fn & {:keys [times args] :or {times 1}}]
+(defn- verify-fn-invocations
+  [stubbed-fn {:keys [times args] :or {times 1}}]
   {:pre [(stub-fn? stubbed-fn)]}
   (let [invocation-report (compile-invocation-report stubbed-fn)
         expected {:times times :args args}
@@ -232,6 +211,44 @@
                              ::actual actual
                              ::invocation-report invocation-report}]
     verification-report))
+
+(defn- verify-method-invocations
+  [stub {:keys [method] :as opts}]
+  (when-not method
+    (throw (IllegalArgumentException. "No method specified")))
+  (if-let [f (-> stub meta (get-in [::stub-fns method]))]
+    (verify-fn-invocations f opts)
+    (throw (IllegalArgumentException.
+             (format "Method %s is not stubbed" method)))))
+
+(defn verify-invocations
+  "Check if the `stubbed` function or protocol has been invoked.
+
+  If the `times` keyword argument is given `verify-invocations` will test if
+  a stub has been invoked the expected number of times.
+
+  If the `args` keyword argument is given `verify-invocations` will test if
+  a stub has been invoked with the expected arguments.
+
+  If both `args` and `times` are given `verify-invocations` checks if the
+  stub has been invoked the expected number of times with the expected
+  arguments. This means that the stub may have been additionally invoked
+  with different arguments an arbitrary number of times.
+
+  Arguments:
+
+  *   `stub`: a stubbed function or protocol.
+
+  Keyword arguments:
+
+  *   `times`: expected number of invocations. Defaults to 1.
+  *   `args`: map of expected arguments to the function invocation.
+  *   `method`: name of the protocol method expected to be invoked. Only
+  necessary if `stubbed` is not a function. Ignored otherwise."
+  [stub & {:as opts}]
+  (if (fn? stub)
+    (verify-fn-invocations stub opts)
+    (verify-method-invocations stub opts)))
 
 (defn- pprint-str
   [x]
@@ -317,32 +334,10 @@
   "Check if a stubbed function or protocol method has been invoked
   successfully.
 
-  Returns `true` if the stubbed function was invoked as expected.
+  Returns `true` if the stub was invoked as expected.
 
-  Arguments:
-
-  *   `stubbed`: the stubbed function or protocol.
-
-  Keyword arguments:
-
-  *   `times`: expected number of invocations. Defaults to 1.
-  *   `args`: map of expected arguments to the invocation.
-  *   `method`: name of the protocol method expected to be invoked. Only
-      necessary if `stubbed` is not a function. Ignored otherwise."
-  [stubbed & {:keys [times args method] :or {times 1} :as kwargs}]
-  (letfn [(fn-invoked? [stubbed-fn]
-            (as-> stubbed-fn $
-              (apply verify-invocations $ (flatten (seq kwargs)))
-              (success? $)))
-          (method-invoked? [stubbed-protocol]
-            (when-not method
-              (throw (IllegalArgumentException. "No method specified")))
-            (if-let [stubbed-fn (-> stubbed-protocol
-                                    meta
-                                    (get-in [::stub-fns method]))]
-              (fn-invoked? stubbed-fn)
-              (throw (IllegalArgumentException.
-                     (format "Method %s is not stubbed" method)))))]
-    (if (fn? stubbed)
-      (fn-invoked? stubbed)
-      (method-invoked? stubbed))))
+  See [[verify-invocations]] for details about arguments."
+  [stub & {:as opts}]
+  (as-> stub $
+    (apply verify-invocations $ (flatten (seq opts)))
+    (success? $)))
