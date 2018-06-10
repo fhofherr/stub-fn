@@ -35,8 +35,8 @@
       (is (= (- 1 2 3) (f 1 2 3))))))
 
 (deftest identify-stubs
-  (is (true? (core/stub? (core/stub-fn f []))))
-  (is (false? (core/stub? (fn [])))))
+  (is (true? (core/stub-fn? (core/stub-fn f []))))
+  (is (false? (core/stub-fn? (fn [])))))
 
 (deftest checking-function-invocation
 
@@ -74,3 +74,52 @@
       (is (core/invoked? f :args {'x 1 'y 2} :times 2))
       (is (core/invoked? f :args {'x 3 'y 4} :times 1))
       (is (not (core/invoked? f :args {'x 3 'y 4} :times 2))))))
+
+(defprotocol StubMe
+  (first-method [_ x])
+  (second-method [_]))
+
+(deftest stubbing-protocols
+
+  (testing "stub all methods of a protocol"
+    (let [stubbed-protocol (core/stub-protocol
+                             StubMe
+                             (first-method [this x] x)
+                             (second-method [this] "second"))
+          first-result (first-method stubbed-protocol "param")
+          second-result (second-method stubbed-protocol)]
+      (is (= first-result "param"))
+      (is (= second-result "second"))
+      (is (core/invoked? stubbed-protocol
+                         :method 'first-method
+                         :args {'this stubbed-protocol
+                                'x "param"}
+                         :times 1))
+      (is (core/invoked? stubbed-protocol
+                         :method 'second-method
+                         :args {'this stubbed-protocol}))))
+
+  (testing "stub a protocol partially"
+    (let [stubbed-protocol (core/stub-protocol
+                             StubMe
+                             (first-method [this x] "result"))
+          result (first-method stubbed-protocol "param")]
+      (is (= result "result"))
+      (is (core/invoked? stubbed-protocol
+                         :method 'first-method
+                         :args {'this stubbed-protocol
+                                'x "param"}))))
+
+  (testing "invocation check requires a method to be specified"
+    (let [stubbed-protocol (core/stub-protocol
+                             StubMe
+                             (first-method [this x]))]
+      (is (thrown? IllegalArgumentException
+                   (core/invoked? stubbed-protocol)))))
+
+  (testing "method must be stubbed"
+    (let [stubbed-protocol (core/stub-protocol
+                             StubMe
+                             (first-method [this x]))]
+      (is (thrown? IllegalArgumentException
+                   (core/invoked? stubbed-protocol :method 'second-method))))))

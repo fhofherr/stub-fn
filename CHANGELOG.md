@@ -9,6 +9,11 @@ change log follows the conventions of
 ### Added
 
 *   `stub-protocol` macro that allows to stub protocol methods.
+*   `:method` keyword argument to `invoked?`.
+
+### Changed
+
+*   Rename `stub?` function to `stub-fn?`.
 
 ## [v0.1.0] - 2018-06-10
 

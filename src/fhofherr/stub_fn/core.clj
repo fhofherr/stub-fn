@@ -7,7 +7,12 @@
   The core functionality is implemented by the [[stub-fn]] macro. It creates
   an anonymous function which can be used in place of any other function. The
   stubbed function tracks information about its invocations under the
-  `::stub-info` key in its meta data."
+  `::stub-info` key in its meta data.
+
+  Starting with version `v0.2.0` `fhofherr/stub-fn` provides a `stub-protocol`
+  macro which reifys a protocol using stub functions. As with plain stub
+  functions the data is tracked under the `::stub-info` key in the meta data
+  of the reifyed protocol"
   (:require [clojure.pprint :refer [pprint]]))
 
 (defn- find-fn-arg-syms
@@ -43,7 +48,7 @@
 
   Arguments:
 
-  * `stubbed-fn`: the stubbed function"
+  *   `stubbed-fn`: the stubbed function"
   [stubbed-fn]
   (-> stubbed-fn meta ::stub-info))
 
@@ -54,7 +59,7 @@
 
   Arguments:
 
-  * `stubbed-fn`: the stubbed function"
+  *   `stubbed-fn`: the stubbed function"
   [stubbed-fn]
   (some-> stubbed-fn
           get-stub-info
@@ -68,21 +73,21 @@
 
   Arguments:
 
-  * `stubbed-fn`: the stubbed function"
+  *   `stubbed-fn`: the stubbed function"
   [stubbed-fn]
   (some-> stubbed-fn
           get-stub-info
           ::invocations
           deref))
 
-(defn stub?
+(defn stub-fn?
   "Check if the function `f` is a stub.
 
   Return `true` if `f` is a stub, or `false` otherwise.
 
   Arguments:
 
-  * `f`: a function that may be a stub"
+  *   `f`: a function that may be a stub"
   [f]
   {:pre [(fn? f)]}
   (as-> f $
@@ -100,7 +105,7 @@
 
 (defn- compile-invocation-report
   [stubbed-fn]
-  {:pre [(stub? stubbed-fn)]}
+  {:pre [(stub-fn? stubbed-fn)]}
   (let [stub-info (get-stub-invocations stubbed-fn)
         total-invocations (count stub-info)
         n-invocations-by-args (->> stub-info
@@ -131,9 +136,9 @@
 
   Arguments:
 
-  * `fn-name`: symbol identifying the function stub
-  * `fn-args`: argument vector of the stubbed function
-  * `fn-body`: body of the function stub (optional)."
+  *   `fn-name`: symbol identifying the function stub
+  *   `fn-args`: argument vector of the stubbed function
+  *   `fn-body`: body of the function stub (optional)."
   [fn-name fn-args & fn-body]
   (let [args (or fn-args [])
         arg-syms (#'find-fn-arg-syms args)
@@ -148,6 +153,44 @@
                            return-value#))]
        (#'assoc-stub-info stubbed-fn# stub-info#))))
 
+(defn- emit-stub-fns
+  [fn-sigs]
+  (into {}
+        (for [[fn-name fn-args & fn-body] fn-sigs]
+          `['~fn-name (stub-fn ~fn-name ~fn-args ~@fn-body)])))
+
+(defn emit-proto-fn-impl
+  [fn-name fn-args stub-fns-sym]
+  `(~fn-name ~fn-args (let [f# (get ~stub-fns-sym '~fn-name)]
+                        (f# ~@fn-args))))
+
+(defmacro stub-protocol
+  "Stub a protocol using stub functions.
+
+  Uses [[stub-fn]] to stub the listed protocol methods. Protocol
+  implementations may be partial. It is therefore not necessary to list
+  all protocol methods when stubbing it. Just the ones really necessary
+  are enough.
+
+  As with [[stub-fn]] you should never store a stubed protocol in a global
+  context. Something like the following is a *bad* idea:
+
+  ```clojure
+  (def (stub-protocol Protocol ...))
+  ```
+
+  Arguments:
+
+  *   `proto`: the protocol to stub
+  *   `sigs`: the method signatures to stub"
+  [proto & sigs]
+  (let [stub-fns-sym (gensym "stub-fns")]
+    `(let [~stub-fns-sym ~(#'emit-stub-fns sigs)
+           stub-proto# (reify ~proto
+                         ~@(for [[fn-name fn-args] sigs]
+                             (#'emit-proto-fn-impl fn-name fn-args stub-fns-sym)))]
+       (vary-meta stub-proto# assoc ::stub-fns ~stub-fns-sym))))
+
 (defn- filter-by-args
   [stub-infos expected-args]
   (filter #(-> % :args (= expected-args)) stub-infos))
@@ -155,7 +198,7 @@
 (defn verify-invocations
   "Check if the function `stubbed-fn` has been invoked.
 
-  If the `times` keyword argument is given `verify-invocations` will test if 
+  If the `times` keyword argument is given `verify-invocations` will test if
   `stubbed-fn` has been invoked the expected number of times.
 
   If the `args` keyword argument is given `verify-invocations` will test if
@@ -168,14 +211,14 @@
 
   Arguments:
 
-  * `stubbed-fn`: the stubbed function.
+  *   `stubbed-fn`: the stubbed function.
 
   Keyword arguments:
 
-  * `times`: expected number of invocations. Defaults to 1.
-  * `args`: map of expected arguments to the function invocation."
+  *   `times`: expected number of invocations. Defaults to 1.
+  *   `args`: map of expected arguments to the function invocation."
   [stubbed-fn & {:keys [times args] :or {times 1}}]
-  {:pre [(stub? stubbed-fn)]}
+  {:pre [(stub-fn? stubbed-fn)]}
   (let [invocation-report (compile-invocation-report stubbed-fn)
         expected {:times times :args args}
         actual {:times (if args
@@ -234,9 +277,9 @@
 
   Arguments:
 
-  * `verification-report`: the verification report to format.
-  * `add-type`: whether to add the type of the report, which is either
-    'Success!' or 'Failure!'. Default `false`."
+  *   `verification-report`: the verification report to format.
+  *   `add-type`: whether to add the type of the report, which is either
+      'Success!' or 'Failure!'. Default `false`."
   [verification-report & {:keys [add-type] :or {add-type false}}]
   (let [n-total (get-in verification-report
                         [::invocation-report :total-invocations])
@@ -273,12 +316,35 @@
   (-> verification-report ::type (= ::success)))
 
 (defn invoked?
-  "Check if a stubbed function has been invoked successfully.
+  "Check if a stubbed function or protocol method has been invoked
+  successfully.
 
   Returns `true` if the stubbed function was invoked as expected.
 
-  Takes the same arguments as [[verify-invocations]]."
-  [stubbed-fn & {:keys [times args] :or {times 1} :as kwargs}]
-  (as-> stubbed-fn $
-    (apply verify-invocations $ (flatten (seq kwargs)))
-    (success? $)))
+  Arguments:
+
+  *   `stubbed`: the stubbed function or protocol.
+
+  Keyword arguments:
+
+  *   `times`: expected number of invocations. Defaults to 1.
+  *   `args`: map of expected arguments to the invocation.
+  *   `method`: name of the protocol method expected to be invoked. Only
+      necessary if `stubbed` is not a function. Ignored otherwise."
+  [stubbed & {:keys [times args method] :or {times 1} :as kwargs}]
+  (letfn [(fn-invoked? [stubbed-fn]
+            (as-> stubbed-fn $
+              (apply verify-invocations $ (flatten (seq kwargs)))
+              (success? $)))
+          (method-invoked? [stubbed-protocol]
+            (when-not method
+              (throw (IllegalArgumentException. "No method specified")))
+            (if-let [stubbed-fn (-> stubbed-protocol
+                                    meta
+                                    (get-in [::stub-fns method]))]
+              (fn-invoked? stubbed-fn)
+              (throw (IllegalArgumentException.
+                     (format "Method %s is not stubbed" method)))))]
+    (if (fn? stubbed)
+      (fn-invoked? stubbed)
+      (method-invoked? stubbed))))
